@@ -82,8 +82,10 @@ implementation ReplStatus IO where
                     True => executeCommand st result (parseCommand result) -- result (parseCommand result) st
                     False => interpretExpression st result
   executeCommand status result Quit = pure Disconnecting   
-  executeCommand status result Invalid = pure Connecting 
-  interpretExpression status result = pure Connecting -- Dummy stub code
+  executeCommand status result Invalid = do putStrLn ("Unrecognized command: " ++ result)
+                                            pure Connecting 
+  interpretExpression status result = do putStrLn ("No such variable " ++ result) -- dummy stub code
+                                         pure Connecting 
   logout st = pure ()
 
 partial main : IO ()
