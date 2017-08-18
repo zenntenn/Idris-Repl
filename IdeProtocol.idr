@@ -12,25 +12,23 @@ connectionString : String;
 connectionString = "/usr/bin/idris";
 
 public export
-data ReplStatus = Disconnected | Connected | Waiting;
+data ReplStatus = Disconnected | Error | Ready | Waiting;
 
 public export
-data ConnectionStatus = Ready | Error; 
+ConnectTypes : ReplStatus;
+ConnectTypes = Ready;
+ConnectTypes = Error;
 
 public export
-connectionStateTransition : ConnectionStatus -> ReplStatus;
-connectionStateTransition Ready = Connected;
-connectionStateTransition Error = Disconnected;
+SendTypes : ReplStatus;
+SendTypes = Waiting;
+SendTypes = Error;
 
 public export
-sendStateTransition : ConnectionStatus -> ReplStatus;
-sendStateTransition Ready = Waiting;
-sendStateTransition Error = Disconnected;
-
-public export
-pollStateTransition : ConnectionStatus -> Either ReplStatus;
-pollStateTransition Ready = ?pollStateTransition_rhs_1
-pollStateTransition Error = Disconnected
+ReceiveTypes : ReplStatus;
+ReceiveTypes = Ready;
+ReceiveTypes = Waiting;
+ReceiveTypes = Error;
 
 
 public export
@@ -38,13 +36,13 @@ interface Repl (m : Type -> Type) where
 {
   Status : ReplStatus -> Type;
   initialize : ST m Var [add (Status Disconnected)];
-  connect : (repl : Var) -> ST m ConnectionStatus [repl ::: Status Disconnected :-> (\res => Status (connectionStateTransition res))]; 
-  disconnect : (repl : Var) -> ST m ConnectionStatus [repl ::: Status Connected :-> Status Disconnected];
-  send : (repl : Var) -> (message : String) -> ST m ConnectionStatus [repl ::: Status Connected :-> (\res => Status (sendStateTransition res))];
--- I'm pretty sure this is the wrong way to do things.  Instead the return should be atomic, but I can't figure out how to stick this in a tuple or some other data structure
-  receive : (repl : Var) -> ST m String [repl ::: Status Waiting];
-  pollForResponse : (repl : Var) -> ST m ConnectionStatus [repl ::: Status Waiting :-> (\res => Status (pollStateTransition res))]; 
+  connect : (repl : Var) -> ST m () [repl ::: Status Disconnected :-> Status ConnectTypes]; 
+  disconnect : (repl : Var) -> ST m () [repl ::: Status ConnectTypes :-> Status Disconnected];
+  send : (repl : Var) -> (message : String) -> ST m () [repl ::: Status Ready :-> Status SendTypes];
+  -- Note, in this case String might either be a proper result, or an error message
+  receive : (repl : Var) -> ST m String [repl ::: Status SendTypes :-> Status ReceiveTypes];
 }
+
 
 -- Local Variables:
 -- idris-load-packages: ("contrib")
