@@ -3,7 +3,7 @@ module IdeProtocol;
 import Control.ST;
 import Control.ST.ImplicitCall;
 import System.Concurrency.Channels;
-import System;
+import Network
 
 %default total
 
@@ -39,8 +39,20 @@ interface Repl (m : Type -> Type) where
   connect : (repl : Var) -> ST m () [repl ::: Status Disconnected :-> Status ConnectTypes]; 
   disconnect : (repl : Var) -> ST m () [repl ::: Status ConnectTypes :-> Status Disconnected];
   send : (repl : Var) -> (message : String) -> ST m () [repl ::: Status Ready :-> Status SendTypes];
-  -- Note, in this case String might either be a proper result, or an error message
-  receive : (repl : Var) -> ST m String [repl ::: Status SendTypes :-> Status ReceiveTypes];
+  receive : (repl : Var) -> ST m String [repl ::: Status Waiting :-> Status ReceiveTypes];
+  getErrorMessage : (repl : Var) -> ST m String [repl ::: Status Error];
+}
+
+public export
+implementation (Network.Sockets IO) => Repl IO where
+{   
+  Status _ = ?Repl_rhs_1
+  initialize = ?Repl_rhs_2
+  connect repl = ?Repl_rhs_3
+  disconnect repl = ?Repl_rhs_4
+  send repl message = ?Repl_rhs_5
+  receive repl = ?Repl_rhs_6
+  getErrorMessage repl = ?Repl_rhs_7
 }
 
 
