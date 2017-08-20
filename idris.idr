@@ -1,6 +1,6 @@
 import Control.ST
 import Control.ST.ImplicitCall
-import IdeProtocol
+import CompilerManager
 
 %default total
 
@@ -69,10 +69,9 @@ implementation ReplStatus IO where
                                          pure Connecting 
   logout st = pure ()
 
-using (ReplStatus IO, Compiler IO)
+using (ReplStatus IO, Repl IO)
   partial runRepl : ST IO () []
   runRepl = do st <- connect
-               startCompiler st
                input st
                disconnect st
 
