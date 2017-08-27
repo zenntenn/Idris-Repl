@@ -19,7 +19,7 @@ interface ReplStatus (m : Type -> Type) where
                                                                           Connecting => Connected
                                                                           Disconnecting => Disconnected))]
   
-  executeCommand : (status : Var) -> (result : String) -> (command : Commands) -> ST m Transition [status ::: Status Connected :->
+  executeCommand : (status : Var) -> (Commands, Maybe String) -> ST m Transition [status ::: Status Connected :->
                                                                                        (\res => Status (case res of
                                                                                                 Connecting => Connected
                                                                                                 Disconnecting => Disconnected))]
@@ -33,18 +33,26 @@ interface ReplStatus (m : Type -> Type) where
 startsWithColon : (s : String) -> Bool
 startsWithColon s = substr 0 1 (ltrim s) == ":"
 
-parseTrimmedCommand : (s : String) -> Commands
-parseTrimmedCommand ":q" = Quit
-parseTrimmedCommand _ = Invalid
+parseTrimmedCommand : (s : String) -> (Commands, Maybe String)
+parseTrimmedCommand ":q" = (Quit, Nothing)
+parseTrimmedCommand s = (Invalid, Just s)
 
-parseCommand : (s : String) -> Commands
+outputCommand : Commands -> String
+outputCommand Quit = ":q"
+outputCommand Invalid = "Invalid Command"
+
+takesNoArguments : Commands -> Bool;
+takesNoArguments Quit = True;
+takesNoArguments _ = False;
+
+parseCommand : (s : String) -> (Commands, Maybe String)
 parseCommand s = parseTrimmedCommand (trim s)
 
 isValidCommand : (s : String) -> Bool
 isValidCommand s = case startsWithColon s of
                         False => False
                         True => case parseCommand s of
-                                      Invalid => False
+                                      (Invalid, _) => False
                                       _ => True
 
 partial input : (ConsoleIO m, ReplStatus m) => (st : Var) -> ST m () [st ::: Status {m} Disconnected]
@@ -60,11 +68,18 @@ implementation ReplStatus IO where
   eval st = do putStr "Idris> "
                result <- getStr
                case isValidCommand result of
-                    True => executeCommand st result (parseCommand result) 
+                    True => executeCommand st (parseCommand result) 
                     False => interpretExpression st result
-  executeCommand status result Quit = pure Disconnecting   
-  executeCommand status result Invalid = do putStrLn ("Unrecognized command: " ++ result)
-                                            pure Connecting 
+  executeCommand status (Quit, Nothing) = pure Disconnecting   
+  executeCommand status (Invalid, Just result) = do { putStrLn ("Unrecognized command: " ++ result);
+                                                      pure Connecting;
+                                                    }
+  executeCommand status (Invalid, Nothing) = do { putStrLn ("Error, invalid command");
+                                                  pure Connecting;
+                                                }
+  executeCommand status (command, Just x) = do { putStrLn ((outputCommand command) ++ " takes no arguments");
+                                                 pure Connecting;
+                                               }
   interpretExpression status result = do putStrLn ("No such variable " ++ result) -- dummy stub code
                                          pure Connecting 
   logout st = pure ()
@@ -78,3 +93,6 @@ using (ReplStatus IO, Repl IO)
 partial main : IO ()
 main = run runRepl
 
+-- Local Variables:
+-- idris-load-packages: ("contrib")
+-- End:
