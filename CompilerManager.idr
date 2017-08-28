@@ -113,8 +113,5 @@ Repl IO where
                     }
 }
 
--- Local Variables:
--- idris-load-packages: ("contrib")
--- End:
  
  
