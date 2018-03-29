@@ -1,1 +1,7 @@
+package repl
+
+executable = idris.exe
+
+main = idris
+
 opts = "-p contrib"

@@ -45,11 +45,17 @@ interface Repl (m : Type -> Type) where
 {
   Status : ReplStatus -> Type;
   initialize : ST m Var [add (Status Disconnected)];
-  connect : (repl : Var) -> (idrisLocation : String) -> ST m ReplValues [repl ::: Status Disconnected :-> (\res => Status (connectStateTransition res))];      
+  connect : (repl : Var) -> (idrisLocation : String) -> ST m ReplValues [repl ::: Status Disconnected :-> (\res => Status (connectStateTransition res))];
   disconnect : (repl : Var) -> ST m ReplValues [repl ::: Status (Error | Ready) :-> Status Disconnected];
   send : (repl : Var) -> (message : String) -> ST m ReplValues [repl ::: Status Ready :-> (\res => Status (sendStateTransition res))];
-  receive : (repl : Var) -> ST m ReplValues [repl ::: Status Waiting :-> (\res => Status (receiveStateTranstion res))];
+  receivePartial : (repl : Var) -> ST m ReplValues [repl ::: Status Waiting :-> (\res => Status (receiveStateTranstion res))];
+  receiveFinal : (messagesLeft : Nat) -> (repl : Var) -> ST m ReplValues [repl ::: Status Waiting :-> Status (Error | Waiting)];
 }
+
+public export
+-- This is to set a limit on how many messages can be reported back before an error condition has occured, otherwise it could get stuck in an infinite loop if Idris is behaving badly
+maxMessages : Nat
+maxMessages = 6
 
 unableToStartIdris : String
 unableToStartIdris = "Unable to start Idris from location ";
@@ -66,23 +72,23 @@ Repl IO where
                                     currentState <- read repl;
                                     case (handle) of
                                     {
-                                      Nothing => do pure (record {message = Just (unableToStartIdris ++ idrisLocation), result = Failed} currentState); 
+                                      Nothing => do pure (record {message = Just (unableToStartIdris ++ idrisLocation), result = Failed} currentState);
                                       Just pid => do { chan <- lift (connect pid)
                                                        case (chan) of
                                                        {
                                                          Nothing => do pure (record {message = Just (unableToStartIdris ++ idrisLocation), result = Failed} currentState);
                                                          Just _ => do pure (record {result = OK, channel = chan} currentState);
                                                        }
-                                                     } 
+                                                     }
                                     }
-                                  } 
+                                  }
   disconnect repl = do { currentState <- read repl;
                          case ( channel currentState) of
                          {
                            Nothing => do pure currentState;
                            Just chan => do { lift (system "killall idris"); -- This is a bad idea for several reasons, but I'm not sure how else ot stop the idris process
                                               pure (record {channel = Nothing} currentState);
-                                           } 
+                                           }
                          }
                        }
   send repl message = do { currentState <- read repl;
@@ -97,8 +103,8 @@ Repl IO where
                                                }
                                              }
                            }
-                         } 
-  receive repl = do { currentState <- read repl;
+                         }
+  receivePartial repl = do { currentState <- read repl;
                       case (channel currentState) of
                       {
                         Nothing => do pure (record {message = Just (cantContactMessage), result = Failed} currentState);
@@ -111,7 +117,6 @@ Repl IO where
                                         }
                       }
                     }
+  receiveFinal Z repl = ?receiveFinal_rhs1
+  receiveFinal (S messagesLeft) repl = ?receiveFinal_rhs2
 }
-
- 
- 

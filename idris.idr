@@ -22,12 +22,12 @@ interface ReplStatus (m : Type -> Type) where
                                                     (\res => Status (case res of
                                                                           Connecting => Connected
                                                                           Disconnecting => Disconnected))]
-  
+
   execute : (status : Var) -> (Parsed, String) -> ST m Transition [status ::: Status Connected :->
                                                                                        (\res => Status (case res of
                                                                                                 Connecting => Connected
                                                                                                 Disconnecting => Disconnected))]
-  
+
 {-  interpretExpression : (status : Var) -> (result : String) -> ST m Transition [status ::: Status Connected :->
                                                                                        (\res => Status (case res of
                                                                                                 Connecting => Connected
@@ -62,20 +62,20 @@ isValidCommand s = case startsWithColon s of
                                       -}
 partial input : (ConsoleIO m, ReplStatus m) => (st : Var) -> ST m () [st ::: Status {m} Disconnected]
 input st = do Connecting <- eval st | Disconnecting => do putStrLn "Bye bye"
-              logout st 
+              logout st
               input st
 
 implementation ReplStatus IO where
   Status x = State ReplValues
   connect compilerLocation = do st <- initialize
-                                CompilerManager.connect st compilerLocation 
+                                CompilerManager.connect st compilerLocation
                                 pure st
   disconnect status = delete status
   eval st = do putStr "Idris> "
                result <- getStr
                execute st (parse result)
         {-       case isValidCommand result of
-                    True => executeCommand st (parseCommand result) 
+                    True => executeCommand st (parseCommand result)
                     False => interpretExpression st result
   -}
   execute st (Quit, "") = pure Disconnecting
@@ -86,6 +86,7 @@ implementation ReplStatus IO where
                                pure Connecting;
                              }
   execute st (Send, s) = do { send st s
+                              receiveFinal maxMessages st
                               ?handleReceipt
                             }
 {-  executeCommand status (Invalid, Just result) = do { putStrLn ("Unrecognized command: " ++ result);
@@ -98,7 +99,7 @@ implementation ReplStatus IO where
                                                  pure Connecting;
                                                }
   interpretExpression status result = do putStrLn ("No such variable " ++ result) -- dummy stub code
-                                         pure Connecting 
+                                         pure Connecting
                                          -}
   logout st = pure ()
 
@@ -110,4 +111,3 @@ using (ReplStatus IO, Repl IO)
 
 partial main : IO ()
 main = run runRepl
-
