@@ -6,7 +6,7 @@ public export
 data Parsed = Quit | Send | Empty
 
 isQuit : (s : String) -> Bool
-isQuit s = isPrefixOf ":q" s 
+isQuit s = isPrefixOf ":q" s
 
 remaining : List String -> String
 remaining [] = ""
@@ -31,10 +31,8 @@ parseTrimmed : (s : String) -> (Parsed, String)
 parseTrimmed "" = (Empty, "")
 parseTrimmed s = case isPrefixOf ":q" s of
                       True => (Quit, (stringAfterCommand s))
-                      False => (Send, (interpret s)) 
+                      False => (Send, (interpret s))
 
 public export
 parse : (s : String) -> (Parsed, String)
 parse s = parseTrimmed (trim s)
-
-construct : (s : String) -> String

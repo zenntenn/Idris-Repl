@@ -86,7 +86,7 @@ implementation ReplStatus IO where
                                pure Connecting;
                              }
   execute st (Send, s) = do { send st s
-                              receiveFinal maxMessages st
+                              result <- receiveFinal maxMessages st
                               ?handleReceipt
                             }
 {-  executeCommand status (Invalid, Just result) = do { putStrLn ("Unrecognized command: " ++ result);

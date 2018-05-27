@@ -1,6 +1,6 @@
 package repl
 
-executable = idris.exe
+executable = repl.exe
 
 main = idris
 

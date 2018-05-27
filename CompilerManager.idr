@@ -117,6 +117,6 @@ Repl IO where
                                         }
                       }
                     }
-  receiveFinal Z repl = ?receiveFinal_rhs1
-  receiveFinal (S messagesLeft) repl = ?receiveFinal_rhs2
+  receiveFinal Z repl = receivePartial repl
+  receiveFinal (S messagesLeft) repl = ?receiveFinal_rhs
 }
