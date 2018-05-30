@@ -49,7 +49,7 @@ interface Repl (m : Type -> Type) where
   disconnect : (repl : Var) -> ST m ReplValues [repl ::: Status (Error | Ready) :-> Status Disconnected];
   send : (repl : Var) -> (message : String) -> ST m ReplValues [repl ::: Status Ready :-> (\res => Status (sendStateTransition res))];
   receivePartial : (repl : Var) -> ST m ReplValues [repl ::: Status Waiting :-> (\res => Status (receiveStateTranstion res))];
-  receiveFinal : (messagesLeft : Nat) -> (repl : Var) -> ST m ReplValues [repl ::: Status Waiting :-> Status (Error | Waiting)];
+  receiveFinal : (messagesLeft : Nat) -> (repl : Var) -> ST m ReplValues [repl ::: Status Waiting :-> Status (Error | OK)];
 }
 
 public export
@@ -62,6 +62,15 @@ unableToStartIdris = "Unable to start Idris from location ";
 
 cantContactMessage : String
 cantContactMessage = "Unable to contact Idris process";
+
+concatinateMaybeStrings : Maybe String -> Maybe String -> Maybe String
+concatinateMaybeStrings Nothing Nothing = Nothing
+concatinateMaybeStrings Nothing (Just x) = Just x
+concatinateMaybeStrings (Just x) Nothing = Just x
+concatinateMaybeStrings (Just x) (Just y) = Just (x ++ y)
+
+combineMessages : Maybe String -> ReplValues -> STrans IO ReplValues [(repl ::: (State ReplValues))] (\result1 => [(repl ::: (State ReplValues))])
+combineMessages previousMessage newTransmission = do pure (record {message = concatinateMaybeStrings previousMessage (message newTransmission)} newTransmission)
 
 public export
 Repl IO where
@@ -86,7 +95,7 @@ Repl IO where
                          case ( channel currentState) of
                          {
                            Nothing => do pure currentState;
-                           Just chan => do { lift (system "killall idris"); -- This is a bad idea for several reasons, but I'm not sure how else ot stop the idris process
+                           Just chan => do { lift (system "killall idris"); -- This is a bad idea for several reasons, but I'm not sure how else to stop the idris process
                                               pure (record {channel = Nothing} currentState);
                                            }
                          }
@@ -118,5 +127,15 @@ Repl IO where
                       }
                     }
   receiveFinal Z repl = receivePartial repl
-  receiveFinal (S messagesLeft) repl = ?receiveFinal_rhs
+  receiveFinal (S messagesLeft) repl = do { currentMessage <- receivePartial repl;
+                                            (case result currentMessage of
+                                                  Failed => pure currentMessage;
+                                                  OK => pure currentMessage;
+                                                  More => do { newMessage <- receiveFinal messagesLeft repl;
+                                                               combineMessages (message currentMessage) newMessage;
+                                                             }
+                                            )
+                                          }
+
+
 }

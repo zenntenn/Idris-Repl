@@ -5,8 +5,6 @@ import IdeProtocol
 
 %default total
 
--- data Commands = Quit | Invalid
-
 defaultIdrisLocation : String
 defaultIdrisLocation = "/usr/bin/idris" -- Should make this smarter
 
@@ -65,6 +63,16 @@ input st = do Connecting <- eval st | Disconnecting => do putStrLn "Bye bye"
               logout st
               input st
 
+outputMessageAndContinue : (st : Var) -> String -> STrans IO Transition [(st ::: (State ReplValues))] (\result => [(st ::: (State ReplValues))])
+outputMessageAndContinue st x = do { putStrLn (x)
+                                     pure Connecting;
+                                   }
+
+maybeStringNothingEmpty : Maybe String -> String
+maybeStringNothingEmpty Nothing = ""
+maybeStringNothingEmpty (Just x) = x
+
+
 implementation ReplStatus IO where
   Status x = State ReplValues
   connect compilerLocation = do st <- initialize
@@ -74,33 +82,19 @@ implementation ReplStatus IO where
   eval st = do putStr "Idris> "
                result <- getStr
                execute st (parse result)
-        {-       case isValidCommand result of
-                    True => executeCommand st (parseCommand result)
-                    False => interpretExpression st result
-  -}
+
   execute st (Quit, "") = pure Disconnecting
-  execute st (Quit, s) = do { putStrLn (":q takes no arguments");
-                              pure Connecting;
-                            }
-  execute st (Empty, _) = do { putStrLn ("");
-                               pure Connecting;
-                             }
+  execute st (Quit, s) = outputMessageAndContinue st ":q takes no arguments"
+
+  execute st (Empty, _) = outputMessageAndContinue st ""
   execute st (Send, s) = do { send st s
-                              result <- receiveFinal maxMessages st
-                              ?handleReceipt
+                              returned <- receiveFinal maxMessages st
+                              case result returned of
+                                    OK => outputMessageAndContinue st (maybeStringNothingEmpty (message returned))
+                                    Failed => outputMessageAndContinue st ("Error: " ++ (maybeStringNothingEmpty (message returned)))
+                                    More => outputMessageAndContinue st "Error, should never happen, see label LABEL1 in idris.idr"
                             }
-{-  executeCommand status (Invalid, Just result) = do { putStrLn ("Unrecognized command: " ++ result);
-                                                      pure Connecting;
-                                                    }
-  executeCommand status (Invalid, Nothing) = do { putStrLn ("Error, invalid command");
-                                                  pure Connecting;
-                                                }
-  executeCommand status (command, Just x) = do { putStrLn ((outputCommand command) ++ " takes no arguments");
-                                                 pure Connecting;
-                                               }
-  interpretExpression status result = do putStrLn ("No such variable " ++ result) -- dummy stub code
-                                         pure Connecting
-                                         -}
+
   logout st = pure ()
 
 using (ReplStatus IO, Repl IO)
