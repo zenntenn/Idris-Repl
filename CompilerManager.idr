@@ -1,4 +1,4 @@
-module CompilerManager;
+module CompilerManager
 
 import Control.ST;
 import Control.ST.ImplicitCall;
