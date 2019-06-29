@@ -1,0 +1,3 @@
+[submodule "idris-curses"]
+	path = idris-curses
+	url = https://github.com/zenntenn/idris-curses.git
