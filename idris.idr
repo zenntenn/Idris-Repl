@@ -73,7 +73,7 @@ maybeStringNothingEmpty Nothing = ""
 maybeStringNothingEmpty (Just x) = x
 
 
-implementation ReplStatus IO where
+ReplStatus IO where
   Status x = State ReplValues
   connect compilerLocation = do st <- initialize
                                 CompilerManager.connect st compilerLocation
